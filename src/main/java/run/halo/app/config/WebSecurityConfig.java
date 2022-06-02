@@ -40,8 +40,10 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import run.halo.app.extension.ExtensionClient;
 import run.halo.app.identity.apitoken.DefaultPersonalAccessTokenDecoder;
+import run.halo.app.identity.apitoken.DefaultPersonalAuthorizationService;
 import run.halo.app.identity.apitoken.PersonalAccessTokenDecoder;
 import run.halo.app.identity.apitoken.PersonalAccessTokenUtils;
+import run.halo.app.identity.apitoken.PersonalAuthorizationService;
 import run.halo.app.identity.authentication.InMemoryOAuth2AuthorizationService;
 import run.halo.app.identity.authentication.JwtGenerator;
 import run.halo.app.identity.authentication.OAuth2AuthorizationService;
@@ -152,7 +154,12 @@ public class WebSecurityConfig {
     PersonalAccessTokenDecoder personalAccessTokenDecoder() {
         String salt = HaloUtils.readClassPathResourceAsString("apiToken.salt");
         SecretKey secretKey = PersonalAccessTokenUtils.convertStringToSecretKey(salt);
-        return new DefaultPersonalAccessTokenDecoder(oauth2AuthorizationService(), secretKey);
+        return new DefaultPersonalAccessTokenDecoder(personalAuthorizationService(), secretKey);
+    }
+
+    @Bean
+    PersonalAuthorizationService personalAuthorizationService() {
+        return new DefaultPersonalAuthorizationService(extensionClient);
     }
 
     @Bean

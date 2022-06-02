@@ -3,16 +3,12 @@ package run.halo.app.identity.apitoken;
 import java.util.Collection;
 import javax.crypto.SecretKey;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import run.halo.app.identity.authentication.OAuth2Authorization;
-import run.halo.app.identity.authentication.OAuth2AuthorizationService;
-import run.halo.app.identity.authentication.OAuth2TokenType;
 
 /**
  * A default implementation of personal access token authentication.
@@ -28,13 +24,13 @@ public class DefaultPersonalAccessTokenDecoder implements PersonalAccessTokenDec
     private OAuth2TokenValidator<PersonalAccessToken> personalAccessTokenValidator =
         createDefault();
 
-    private final OAuth2AuthorizationService oauth2AuthorizationService;
+    private final PersonalAuthorizationService personalAuthorizationService;
 
     private final SecretKey secretKey;
 
     public DefaultPersonalAccessTokenDecoder(
-        OAuth2AuthorizationService oauth2AuthorizationService, SecretKey secretKey) {
-        this.oauth2AuthorizationService = oauth2AuthorizationService;
+        PersonalAuthorizationService personalAuthorizationService, SecretKey secretKey) {
+        this.personalAuthorizationService = personalAuthorizationService;
         this.secretKey = secretKey;
     }
 
@@ -69,26 +65,23 @@ public class DefaultPersonalAccessTokenDecoder implements PersonalAccessTokenDec
     }
 
     private PersonalAccessToken createPersonalAccessToken(String token) {
-        OAuth2Authorization oauth2Authorization = oauth2AuthorizationService.findByToken(token,
-            OAuth2TokenType.ACCESS_TOKEN);
-        if (oauth2Authorization == null) {
+        PersonalAuthorization personalAuthorization =
+            personalAuthorizationService.findByToken(PersonalAccessTokenAuthorization.class, token);
+        if (personalAuthorization == null) {
             throw new PersonalAccessTokenException(String.format(DECODING_ERROR_MESSAGE_TEMPLATE,
                 "Failed to retrieve personal access token"));
         }
-        return createPersonalAccessToken(oauth2Authorization);
+        return createPersonalAccessToken(personalAuthorization);
     }
 
-    private PersonalAccessToken createPersonalAccessToken(OAuth2Authorization oauth2Authorization) {
-        OAuth2Authorization.Token<OAuth2AccessToken> accessTokenToken =
-            oauth2Authorization.getToken(OAuth2AccessToken.class);
-        if (accessTokenToken == null) {
-            throw new PersonalAccessTokenException(String.format(DECODING_ERROR_MESSAGE_TEMPLATE,
-                "Failed to retrieve personal access token"));
-        }
+    private PersonalAccessToken createPersonalAccessToken(PersonalAuthorization authorization) {
         return PersonalAccessToken.builder()
-            .principalName(oauth2Authorization.getPrincipalName())
-            .token(accessTokenToken.getToken())
-            .attributes(accessTokenToken.getClaims())
+            .principalName(authorization.getOwner())
+            .tokenValue(authorization.getTokenValue())
+            .issuedAt(authorization.getIssuedAt())
+            .expiresAt(authorization.getExpiresAt())
+            .scopes(authorization.getScopes())
+            .attributes(authorization.getClaims())
             .build();
     }
 

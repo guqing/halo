@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.security.oauth2.core.AbstractOAuth2Token;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.util.Assert;
 
@@ -20,16 +19,16 @@ import org.springframework.util.Assert;
  * permanent tokens that cannot be regenerated.</p>
  *
  * @author guqing
+ * @see AbstractOAuth2Token
  * @since 2.0.0
  */
-public class PersonalAccessToken extends OAuth2AccessToken {
+public class PersonalAccessToken extends AbstractOAuth2Token {
+
+    private final Set<String> scopes;
 
     private final String principalName;
 
     private final Map<String, Object> claims;
-
-    public static final AuthorizationGrantType PERSONAL_ACCESS_TOKEN =
-        new AuthorizationGrantType("personal_access_token");
 
     /**
      * Constructs an {@code PersonalAccessToken} using the provided parameters.
@@ -62,9 +61,10 @@ public class PersonalAccessToken extends OAuth2AccessToken {
      */
     public PersonalAccessToken(String tokenValue, Instant issuedAt, Instant expiresAt,
         Set<String> roles, String principalName, Map<String, Object> attributes) {
-        super(TokenType.BEARER, tokenValue, issuedAt, expiresAt, roles);
+        super(tokenValue, issuedAt, expiresAt);
         this.principalName = principalName;
         this.claims = attributes;
+        this.scopes = roles;
     }
 
     public String getPrincipalName() {
@@ -73,6 +73,10 @@ public class PersonalAccessToken extends OAuth2AccessToken {
 
     public Map<String, Object> getClaims() {
         return claims;
+    }
+
+    public Set<String> getScopes() {
+        return scopes;
     }
 
     public static Builder builder() {
