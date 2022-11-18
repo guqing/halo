@@ -312,6 +312,19 @@ public class SinglePageReconciler implements Reconciler<Reconciler.Request> {
                 status.setPhase(Post.PostPhase.DRAFT.name());
             }
 
+            if (Objects.equals(false, singlePage.getSpec().getPublish()
+                || StringUtils.isBlank(singlePage.getSpec().getReleaseSnapshot()))) {
+                Condition condition = Condition.builder()
+                    .type(Post.PostPhase.DRAFT.name())
+                    .reason("Drafted")
+                    .message(StringUtils.EMPTY)
+                    .status(ConditionStatus.TRUE)
+                    .lastTransitionTime(Instant.now())
+                    .build();
+                status.setPhase(Post.PostPhase.DRAFT.name());
+                status.getConditionsOrDefault().addAndEvictFIFO(condition);
+            }
+
             // handle excerpt
             Post.Excerpt excerpt = spec.getExcerpt();
             if (excerpt == null) {

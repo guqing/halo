@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import run.halo.app.content.ContentService;
-import run.halo.app.content.PostService;
 import run.halo.app.content.permalinks.CategoryPermalinkPolicy;
 import run.halo.app.content.permalinks.PostPermalinkPolicy;
 import run.halo.app.content.permalinks.TagPermalinkPolicy;
@@ -150,10 +149,9 @@ public class ExtensionConfiguration {
         @Bean
         Controller postController(ExtensionClient client, ContentService contentService,
             PostPermalinkPolicy postPermalinkPolicy, CounterService counterService,
-            PostService postService, ApplicationContext applicationContext) {
+            ApplicationContext applicationContext) {
             return new ControllerBuilder("post", client)
-                .reconciler(new PostReconciler(client, contentService, postService,
-                    postPermalinkPolicy,
+                .reconciler(new PostReconciler(client, contentService, postPermalinkPolicy,
                     counterService, applicationContext))
                 .extension(new Post())
                 // TODO Make it configurable

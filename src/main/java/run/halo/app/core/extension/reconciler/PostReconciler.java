@@ -12,7 +12,6 @@ import org.jsoup.Jsoup;
 import org.springframework.context.ApplicationContext;
 import org.springframework.util.Assert;
 import run.halo.app.content.ContentService;
-import run.halo.app.content.PostService;
 import run.halo.app.content.permalinks.PostPermalinkPolicy;
 import run.halo.app.core.extension.Comment;
 import run.halo.app.core.extension.Post;
@@ -49,7 +48,6 @@ public class PostReconciler implements Reconciler<Reconciler.Request> {
     private static final String FINALIZER_NAME = "post-protection";
     private final ExtensionClient client;
     private final ContentService contentService;
-    private final PostService postService;
     private final PostPermalinkPolicy postPermalinkPolicy;
     private final CounterService counterService;
 
@@ -243,6 +241,20 @@ public class PostReconciler implements Reconciler<Reconciler.Request> {
             if (status.getPhase() == null) {
                 status.setPhase(Post.PostPhase.DRAFT.name());
             }
+
+            if (Objects.equals(false, post.getSpec().getPublish()
+                || StringUtils.isBlank(post.getSpec().getReleaseSnapshot()))) {
+                Condition condition = Condition.builder()
+                    .type(Post.PostPhase.DRAFT.name())
+                    .reason("Drafted")
+                    .message(StringUtils.EMPTY)
+                    .status(ConditionStatus.TRUE)
+                    .lastTransitionTime(Instant.now())
+                    .build();
+                status.setPhase(Post.PostPhase.DRAFT.name());
+                status.getConditionsOrDefault().addAndEvictFIFO(condition);
+            }
+
             Post.PostSpec spec = post.getSpec();
             // handle excerpt
             Post.Excerpt excerpt = spec.getExcerpt();

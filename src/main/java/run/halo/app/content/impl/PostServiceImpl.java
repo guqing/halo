@@ -4,7 +4,6 @@ import static run.halo.app.extension.router.selector.SelectorUtil.labelAndFieldS
 
 import java.security.Principal;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -40,8 +39,6 @@ import run.halo.app.core.extension.User;
 import run.halo.app.extension.ListResult;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.Ref;
-import run.halo.app.infra.Condition;
-import run.halo.app.infra.ConditionStatus;
 import run.halo.app.metrics.CounterService;
 import run.halo.app.metrics.MeterUtils;
 
@@ -269,16 +266,6 @@ public class PostServiceImpl implements PostService {
                 if (Objects.equals(true, post.getSpec().getPublish())) {
                     post.getSpec().setReleaseSnapshot(post.getSpec().getHeadSnapshot());
                 }
-                Condition condition = Condition.builder()
-                    .type(Post.PostPhase.DRAFT.name())
-                    .reason("DraftedSuccessfully")
-                    .message("Drafted post successfully.")
-                    .status(ConditionStatus.TRUE)
-                    .lastTransitionTime(Instant.now())
-                    .build();
-                Post.PostStatus status = post.getStatusOrDefault();
-                status.setPhase(Post.PostPhase.DRAFT.name());
-                status.getConditionsOrDefault().addAndEvictFIFO(condition);
                 return client.update(post);
             })
             .retryWhen(Retry.backoff(5, Duration.ofMillis(100))

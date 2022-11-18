@@ -190,7 +190,7 @@ public class PostEndpoint implements CustomEndpoint {
             })
             .flatMap(client::update)
             .retryWhen(Retry.backoff(3, Duration.ofMillis(100))
-                .filter(t -> t instanceof OptimisticLockingFailureException))
+                .filter(OptimisticLockingFailureException.class::isInstance))
             .flatMap(post -> {
                 if (asyncPublish) {
                     return Mono.just(post);
