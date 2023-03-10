@@ -6,10 +6,10 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import run.halo.app.core.extension.AnnotationSetting;
+import run.halo.app.core.extension.AuthProvider;
 import run.halo.app.core.extension.Counter;
 import run.halo.app.core.extension.Menu;
 import run.halo.app.core.extension.MenuItem;
-import run.halo.app.core.extension.Oauth2Client;
 import run.halo.app.core.extension.Plugin;
 import run.halo.app.core.extension.ReverseProxy;
 import run.halo.app.core.extension.Role;
@@ -17,6 +17,7 @@ import run.halo.app.core.extension.RoleBinding;
 import run.halo.app.core.extension.Setting;
 import run.halo.app.core.extension.Theme;
 import run.halo.app.core.extension.User;
+import run.halo.app.core.extension.UserConnection;
 import run.halo.app.core.extension.attachment.Attachment;
 import run.halo.app.core.extension.attachment.Group;
 import run.halo.app.core.extension.attachment.Policy;
@@ -52,7 +53,6 @@ public class SchemeInitializer implements ApplicationListener<ApplicationStarted
     public void onApplicationEvent(@NonNull ApplicationStartedEvent event) {
         schemeManager.register(Role.class);
         schemeManager.register(PersonalAccessToken.class);
-        schemeManager.register(Oauth2Client.class);
 
         // plugin.halo.run
         schemeManager.register(Plugin.class);
@@ -83,6 +83,9 @@ public class SchemeInitializer implements ApplicationListener<ApplicationStarted
         schemeManager.register(PolicyTemplate.class);
         // metrics.halo.run
         schemeManager.register(Counter.class);
+        // auth.halo.run
+        schemeManager.register(AuthProvider.class);
+        schemeManager.register(UserConnection.class);
 
         eventPublisher.publishEvent(new SchemeInitializedEvent(this));
     }

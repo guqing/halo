@@ -78,7 +78,8 @@ public class DefaultExtensionGetter implements ExtensionGetter {
                     return getEnabledExtension(extensionPoint).flux();
                 }
                 // TODO If the type is sortable, may need to process the returned order.
-                return getEnabledExtensions(extensionPoint);
+                return Flux.fromStream(applicationContext.getBeanProvider(extensionPoint)
+                    .orderedStream());
             });
     }
 }

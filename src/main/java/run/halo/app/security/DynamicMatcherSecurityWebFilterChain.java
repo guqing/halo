@@ -26,7 +26,7 @@ public class DynamicMatcherSecurityWebFilterChain implements SecurityWebFilterCh
     private final ExtensionGetter extensionGetter;
 
     public DynamicMatcherSecurityWebFilterChain(ExtensionGetter extensionGetter,
-                                                SecurityWebFilterChain delegate) {
+        SecurityWebFilterChain delegate) {
         this.delegate = delegate;
         this.extensionGetter = extensionGetter;
     }
@@ -54,7 +54,7 @@ public class DynamicMatcherSecurityWebFilterChain implements SecurityWebFilterCh
         @Override
         @NonNull
         public Mono<Void> filter(@NonNull ServerWebExchange exchange,
-                                 @NonNull WebFilterChain chain) {
+            @NonNull WebFilterChain chain) {
             return this.webFilter.filter(exchange, chain);
         }
 

@@ -18,19 +18,15 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.InMemoryReactiveOAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.server.AuthenticatedPrincipalServerOAuth2AuthorizedClientRepository;
-import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.ServerSecurityContextRepository;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.MediaTypeServerWebExchangeMatcher;
+import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.ServerResponse;
 import run.halo.app.core.extension.service.RoleService;
 import run.halo.app.core.extension.service.UserService;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -38,11 +34,13 @@ import run.halo.app.infra.AnonymousUserConst;
 import run.halo.app.infra.properties.HaloProperties;
 import run.halo.app.plugin.extensionpoint.ExtensionGetter;
 import run.halo.app.security.DefaultUserDetailService;
-import run.halo.app.security.DelegatingOauthAuthenticationSuccessHandler;
 import run.halo.app.security.DynamicMatcherSecurityWebFilterChain;
-import run.halo.app.security.OauthClientRegistrationRepository;
 import run.halo.app.security.SuperAdminInitializer;
 import run.halo.app.security.authentication.SecurityConfigurer;
+import run.halo.app.security.authentication.login.CryptoService;
+import run.halo.app.security.authentication.login.PublicKeyRouteBuilder;
+import run.halo.app.security.authentication.login.RsaKeyScheduledGenerator;
+import run.halo.app.security.authentication.login.impl.RsaKeyService;
 import run.halo.app.security.authorization.RequestInfoAuthorizationManager;
 
 /**
@@ -61,49 +59,23 @@ public class WebServerSecurityConfig {
         RoleService roleService,
         ObjectProvider<SecurityConfigurer> securityConfigurers,
         ServerSecurityContextRepository securityContextRepository,
-        DelegatingOauthAuthenticationSuccessHandler delegatingOauthAuthenticationSuccessHandler,
         ExtensionGetter extensionGetter) {
 
-        http.securityMatcher(
-                pathMatchers("/api/**", "/apis/**", "/login", "/login/**", "/oauth2/**", "/logout",
-                    "/actuator/**"))
+        http.securityMatcher(pathMatchers("/api/**", "/apis/**", "/oauth2/**",
+                "/login/**", "/logout", "/actuator/**"))
             .authorizeExchange().anyExchange()
             .access(new RequestInfoAuthorizationManager(roleService)).and()
             .anonymous(spec -> {
                 spec.authorities(AnonymousUserConst.Role);
                 spec.principal(AnonymousUserConst.PRINCIPAL);
             })
-            .oauth2Login(oauth2 -> oauth2
-                .authenticationSuccessHandler(delegatingOauthAuthenticationSuccessHandler)
-            )
             .securityContextRepository(securityContextRepository)
-            .formLogin(withDefaults())
-            .logout(withDefaults())
             .httpBasic(withDefaults());
 
         // Integrate with other configurers separately
         securityConfigurers.orderedStream()
             .forEach(securityConfigurer -> securityConfigurer.configure(http));
         return new DynamicMatcherSecurityWebFilterChain(extensionGetter, http.build());
-    }
-
-    @Bean
-    public ReactiveClientRegistrationRepository clientRegistrationRepository(
-        ReactiveExtensionClient client) {
-        return new OauthClientRegistrationRepository(client);
-    }
-
-    @Bean
-    public ReactiveOAuth2AuthorizedClientService authorizedClientService(
-        ReactiveClientRegistrationRepository clientRegistrationRepository) {
-        return new InMemoryReactiveOAuth2AuthorizedClientService(clientRegistrationRepository);
-    }
-
-    @Bean
-    public ServerOAuth2AuthorizedClientRepository authorizedClientRepository(
-        ReactiveOAuth2AuthorizedClientService authorizedClientService) {
-        return new AuthenticatedPrincipalServerOAuth2AuthorizedClientRepository(
-            authorizedClientService);
     }
 
     @Bean
@@ -133,7 +105,7 @@ public class WebServerSecurityConfig {
     }
 
     @Bean
-    ReactiveUserDetailsService userDetailsService(UserService userService,
+    DefaultUserDetailService userDetailsService(UserService userService,
         RoleService roleService) {
         return new DefaultUserDetailService(userService, roleService);
     }
@@ -151,5 +123,20 @@ public class WebServerSecurityConfig {
         HaloProperties halo) {
         return new SuperAdminInitializer(client, passwordEncoder(),
             halo.getSecurity().getInitializer());
+    }
+
+    @Bean
+    RouterFunction<ServerResponse> publicKeyRoute(CryptoService cryptoService) {
+        return new PublicKeyRouteBuilder(cryptoService).build();
+    }
+
+    @Bean
+    CryptoService cryptoService(HaloProperties haloProperties) {
+        return new RsaKeyService(haloProperties.getWorkDir().resolve("keys"));
+    }
+
+    @Bean
+    RsaKeyScheduledGenerator rsaKeyScheduledGenerator(CryptoService cryptoService) {
+        return new RsaKeyScheduledGenerator(cryptoService);
     }
 }
