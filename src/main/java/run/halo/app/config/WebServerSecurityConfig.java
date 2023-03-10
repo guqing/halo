@@ -6,6 +6,7 @@ import static org.springframework.security.web.server.header.XFrameOptionsServer
 import static org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers;
 
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,11 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.InMemoryReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.server.AuthenticatedPrincipalServerOAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.ServerSecurityContextRepository;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
@@ -30,7 +36,11 @@ import run.halo.app.core.extension.service.UserService;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.infra.AnonymousUserConst;
 import run.halo.app.infra.properties.HaloProperties;
+import run.halo.app.plugin.extensionpoint.ExtensionGetter;
 import run.halo.app.security.DefaultUserDetailService;
+import run.halo.app.security.DelegatingOauthAuthenticationSuccessHandler;
+import run.halo.app.security.DynamicMatcherSecurityWebFilterChain;
+import run.halo.app.security.OauthClientRegistrationRepository;
 import run.halo.app.security.SuperAdminInitializer;
 import run.halo.app.security.authentication.SecurityConfigurer;
 import run.halo.app.security.authorization.RequestInfoAuthorizationManager;
@@ -42,23 +52,30 @@ import run.halo.app.security.authorization.RequestInfoAuthorizationManager;
  */
 @Configuration
 @EnableWebFluxSecurity
+@RequiredArgsConstructor
 public class WebServerSecurityConfig {
 
-    @Bean
+    @Bean(name = "apiSecurityFilterChain")
     @Order(Ordered.HIGHEST_PRECEDENCE)
     SecurityWebFilterChain apiFilterChain(ServerHttpSecurity http,
         RoleService roleService,
         ObjectProvider<SecurityConfigurer> securityConfigurers,
-        ServerSecurityContextRepository securityContextRepository) {
+        ServerSecurityContextRepository securityContextRepository,
+        DelegatingOauthAuthenticationSuccessHandler delegatingOauthAuthenticationSuccessHandler,
+        ExtensionGetter extensionGetter) {
 
         http.securityMatcher(
-                pathMatchers("/api/**", "/apis/**", "/login", "/logout", "/actuator/**"))
+                pathMatchers("/api/**", "/apis/**", "/login", "/login/**", "/oauth2/**", "/logout",
+                    "/actuator/**"))
             .authorizeExchange().anyExchange()
             .access(new RequestInfoAuthorizationManager(roleService)).and()
             .anonymous(spec -> {
                 spec.authorities(AnonymousUserConst.Role);
                 spec.principal(AnonymousUserConst.PRINCIPAL);
             })
+            .oauth2Login(oauth2 -> oauth2
+                .authenticationSuccessHandler(delegatingOauthAuthenticationSuccessHandler)
+            )
             .securityContextRepository(securityContextRepository)
             .formLogin(withDefaults())
             .logout(withDefaults())
@@ -67,8 +84,26 @@ public class WebServerSecurityConfig {
         // Integrate with other configurers separately
         securityConfigurers.orderedStream()
             .forEach(securityConfigurer -> securityConfigurer.configure(http));
+        return new DynamicMatcherSecurityWebFilterChain(extensionGetter, http.build());
+    }
 
-        return http.build();
+    @Bean
+    public ReactiveClientRegistrationRepository clientRegistrationRepository(
+        ReactiveExtensionClient client) {
+        return new OauthClientRegistrationRepository(client);
+    }
+
+    @Bean
+    public ReactiveOAuth2AuthorizedClientService authorizedClientService(
+        ReactiveClientRegistrationRepository clientRegistrationRepository) {
+        return new InMemoryReactiveOAuth2AuthorizedClientService(clientRegistrationRepository);
+    }
+
+    @Bean
+    public ServerOAuth2AuthorizedClientRepository authorizedClientRepository(
+        ReactiveOAuth2AuthorizedClientService authorizedClientService) {
+        return new AuthenticatedPrincipalServerOAuth2AuthorizedClientRepository(
+            authorizedClientService);
     }
 
     @Bean

@@ -9,6 +9,7 @@ import run.halo.app.core.extension.AnnotationSetting;
 import run.halo.app.core.extension.Counter;
 import run.halo.app.core.extension.Menu;
 import run.halo.app.core.extension.MenuItem;
+import run.halo.app.core.extension.Oauth2Client;
 import run.halo.app.core.extension.Plugin;
 import run.halo.app.core.extension.ReverseProxy;
 import run.halo.app.core.extension.Role;
@@ -29,6 +30,8 @@ import run.halo.app.core.extension.content.Snapshot;
 import run.halo.app.core.extension.content.Tag;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.SchemeManager;
+import run.halo.app.plugin.extensionpoint.ExtensionDefinition;
+import run.halo.app.plugin.extensionpoint.ExtensionPointDefinition;
 import run.halo.app.search.extension.SearchEngine;
 import run.halo.app.security.authentication.pat.PersonalAccessToken;
 
@@ -49,10 +52,13 @@ public class SchemeInitializer implements ApplicationListener<ApplicationStarted
     public void onApplicationEvent(@NonNull ApplicationStartedEvent event) {
         schemeManager.register(Role.class);
         schemeManager.register(PersonalAccessToken.class);
+        schemeManager.register(Oauth2Client.class);
 
         // plugin.halo.run
         schemeManager.register(Plugin.class);
         schemeManager.register(SearchEngine.class);
+        schemeManager.register(ExtensionPointDefinition.class);
+        schemeManager.register(ExtensionDefinition.class);
 
         schemeManager.register(RoleBinding.class);
         schemeManager.register(User.class);
